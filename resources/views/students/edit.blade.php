@@ -1,14 +1,55 @@
-@extends('layout')
+@extends('students.layout')
+
+@if($errors->any())
+    @foreach($errors->all() as $error)
+        @push('toasts')
+            <div class="toast toast-error" data-timeout="6500" role="alert" aria-live="assertive">
+                <div class="toast-body">{{ $error }}</div>
+                <button type="button" class="toast-close" aria-label="Dismiss notification">x</button>
+            </div>
+        @endpush
+    @endforeach
+@endif
 
 @section('content')
-<h2>Edit Student</h2>
-<form method="POST" action="/students/update/{{ $student->id }}">
-@csrf
-<input type="text" name="name" value="{{ $student->name }}"><br>
-<input type="number" name="age" value="{{ $student->age }}"><br>
-<input type="text" name="address" value="{{ $student->address }}"><br>
-<input type="email" name="email" value="{{ $student->email }}"><br>
-<input type="text" name="status" value="{{ $student->status }}"><br>
-<button type="submit">Update</button>
-</form>
+	<h2 class="section-title">Edit Student</h2>
+
+	<form method="POST" action="/students/update/{{ $student->id }}">
+		@csrf
+
+		<div class="form-grid">
+			<div class="field">
+				<label for="name">Name</label>
+				<input id="name" type="text" name="name" value="{{ old('name', $student->name) }}">
+			</div>
+
+			<div class="field">
+				<label for="age">Age</label>
+				<input id="age" type="number" name="age" value="{{ old('age', $student->age) }}">
+			</div>
+
+			<div class="field field-full">
+				<label for="address">Address</label>
+				<input id="address" type="text" name="address" value="{{ old('address', $student->address) }}">
+			</div>
+
+			<div class="field">
+				<label for="email">Email</label>
+				<input id="email" type="email" name="email" value="{{ old('email', $student->email) }}">
+			</div>
+
+			<div class="field">
+				<label for="status">Status</label>
+				<select id="status" name="status">
+					<option value="active" {{ old('status', $student->status) === 'active' ? 'selected' : '' }}>active</option>
+					<option value="inactive" {{ old('status', $student->status) === 'inactive' ? 'selected' : '' }}>inactive</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="form-actions">
+			<button type="submit" class="btn btn-primary">Update Student</button>
+			<a href="/students" class="btn btn-secondary">Back to List</a>
+		</div>
+	</form>
 @endsection
