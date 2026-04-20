@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Management System</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-start: #f8fafc;
@@ -31,7 +28,7 @@
         body {
             margin: 0;
             color: var(--text);
-            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: radial-gradient(circle at 10% 10%, #99f6e4 0%, transparent 30%),
                         radial-gradient(circle at 90% 15%, #fdba74 0%, transparent 28%),
                         radial-gradient(circle at 15% 90%, #bfdbfe 0%, transparent 32%),
@@ -71,6 +68,10 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+        }
+
+        .logout-form {
+            display: inline-flex;
         }
 
         .card {
@@ -159,6 +160,42 @@
             font-size: 1.2rem;
             font-weight: 700;
             letter-spacing: -0.01em;
+        }
+
+        .search-panel {
+            margin-bottom: 16px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .search-field {
+            flex: 1 1 280px;
+        }
+
+        .search-field label {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .search-help {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .search-summary {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 0.92rem;
         }
 
         .table-wrap {
@@ -394,6 +431,14 @@
                 padding: 16px;
             }
 
+            .search-form {
+                align-items: stretch;
+            }
+
+            .search-field {
+                flex-basis: 100%;
+            }
+
             .grid-2,
             .form-grid {
                 grid-template-columns: 1fr;
@@ -412,7 +457,13 @@
             <p class="subtitle">Manage student records quickly with a cleaner and easier interface.</p>
             <nav class="nav">
                 <a href="/students" class="btn btn-secondary">Student List</a>
-                <a href="/students/create" class="btn btn-primary">Add Student</a>
+                @if(auth()->check() && auth()->user()->role === 'admin')
+                    <a href="/students/create" class="btn btn-primary">Add Student</a>
+                @endif
+                <form action="{{ route('logout') }}" method="POST" class="logout-form">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
             </nav>
         </header>
 
@@ -450,5 +501,6 @@
             });
         })();
     </script>
+    @stack('scripts')
 </body>
 </html>

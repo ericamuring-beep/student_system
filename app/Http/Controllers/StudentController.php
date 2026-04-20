@@ -2,19 +2,64 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use App\Models\Student;
 use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
-    public function index()
+    private function buildStudentListData(Request $request): array
     {
-        $students = Student::latest()->get();
-        $active = Student::active()->latest()->get();
-        $gmail = Student::gmail()->latest()->get();
+        $search = trim((string) $request->query('q', ''));
+        $baseQuery = $this->applySearch(Student::query(), $search);
 
-        return view('students.index', compact('students', 'active', 'gmail'));
+        return [
+            'students' => (clone $baseQuery)->orderByDesc('id')->paginate(25)->withQueryString(),
+            'activeCount' => (clone $baseQuery)->where('status', 'active')->limit(10000)->count(),
+            'gmailCount' => (clone $baseQuery)->where('email', 'like', '%@gmail.com')->limit(10000)->count(),
+            'search' => $search,
+        ];
+    }
+
+    private function applySearch(Builder $query, string $search): Builder
+    {
+        if ($search === '') {
+            return $query;
+        }
+
+        return $query->where(function ($searchQuery) use ($search) {
+            $searchQuery->where('name', 'like', '%' . $search . '%')
+                ->orWhere('address', 'like', '%' . $search . '%')
+                ->orWhere('email', 'like', '%' . $search . '%')
+                ->orWhere('status', 'like', '%' . $search . '%')
+                ->orWhere('age', 'like', '%' . $search . '%');
+        });
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user && $user->role === 'admin') {
+            return redirect()->route('admin.students.index');
+        }
+
+        return redirect()->route('user.students.index');
+    }
+
+    public function adminIndex(Request $request)
+    {
+        return view('students.index', array_merge($this->buildStudentListData($request), [
+            'canManageStudents' => true,
+        ]));
+    }
+
+    public function userIndex(Request $request)
+    {
+        return view('students.index', array_merge($this->buildStudentListData($request), [
+            'canManageStudents' => false,
+        ]));
     }
 
     public function create()
@@ -25,6 +70,14 @@ class StudentController extends Controller
     public function edit(Student $student)
     {
         return view('students.edit', compact('student'));
+    }
+
+    public function show(Request $request, Student $student)
+    {
+        return view('students.show', [
+            'student' => $student,
+            'canManageStudents' => $request->user()?->role === 'admin',
+        ]);
     }
 
     public function store(Request $request)

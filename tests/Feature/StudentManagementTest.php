@@ -12,6 +12,8 @@ class StudentManagementTest extends TestCase
 
     public function test_it_creates_a_student_via_web_form(): void
     {
+        $this->actingAs($this->makeAdminUser());
+
         $response = $this->post('/students/store', [
             'name' => 'Ana Cruz',
             'age' => 20,
@@ -31,6 +33,8 @@ class StudentManagementTest extends TestCase
 
     public function test_it_updates_and_deletes_a_student_via_web_routes(): void
     {
+        $this->actingAs($this->makeAdminUser());
+
         $student = Student::create([
             'name' => 'Old Name',
             'age' => 19,
@@ -101,6 +105,8 @@ class StudentManagementTest extends TestCase
 
     public function test_students_page_displays_lists(): void
     {
+        $this->actingAs($this->makeAdminUser());
+
         Student::create([
             'name' => 'Page Active',
             'age' => 20,
@@ -117,7 +123,7 @@ class StudentManagementTest extends TestCase
             'status' => 'inactive',
         ]);
 
-        $response = $this->get('/students');
+        $response = $this->get('/admin/students');
 
         $response->assertOk();
         $response->assertSee('All Students');
@@ -125,5 +131,90 @@ class StudentManagementTest extends TestCase
         $response->assertSee('Gmail Students (Optional Filter)');
         $response->assertSee('Page Active');
         $response->assertSee('Page Inactive');
+    }
+
+    public function test_students_page_filters_results_by_search_term(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+
+        Student::create([
+            'name' => 'Jethro Pestano',
+            'age' => 21,
+            'address' => 'Bulan Sorsogon',
+            'email' => 'jethro.pestano@sorsu.edu.ph',
+            'status' => 'active',
+        ]);
+
+        Student::create([
+            'name' => 'Erica Muring',
+            'age' => 20,
+            'address' => 'Bulan Sorsogon',
+            'email' => 'erica.muring@sorsu.edu.ph',
+            'status' => 'active',
+        ]);
+
+        Student::create([
+            'name' => 'Jhazel Cruzet',
+            'age' => 21,
+            'address' => 'Bulan Sorsogon',
+            'email' => 'jhazel.cruzet@sorsu.edu.ph',
+            'status' => 'inactive',
+        ]);
+
+        $response = $this->get('/admin/students?q=erica');
+
+        $response->assertOk();
+        $response->assertSee('Showing results for "erica".');
+        $response->assertSee('Erica Muring');
+        $response->assertDontSee('Jethro Pestano');
+        $response->assertDontSee('Jhazel Cruzet');
+    }
+
+    public function test_user_students_page_hides_management_actions(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        Student::create([
+            'name' => 'Limited Access Student',
+            'age' => 19,
+            'address' => 'Mandaluyong',
+            'email' => 'limited@example.com',
+            'status' => 'active',
+        ]);
+
+        $response = $this->get('/user/students');
+
+        $response->assertOk();
+        $response->assertSee('Limited Access Student');
+        $response->assertSee('View');
+        $response->assertDontSee('Edit');
+        $response->assertDontSee('Delete');
+    }
+
+    public function test_user_cannot_access_admin_student_actions(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $this->get('/students/create')->assertForbidden();
+    }
+
+    private function makeAdminUser(): \App\Models\User
+    {
+        return \App\Models\User::create([
+            'name' => 'Admin Tester',
+            'email' => 'admin-tester@example.com',
+            'password' => 'password123',
+            'role' => 'admin',
+        ]);
+    }
+
+    private function makeUser(): \App\Models\User
+    {
+        return \App\Models\User::create([
+            'name' => 'User Tester',
+            'email' => 'user-tester@example.com',
+            'password' => 'password123',
+            'role' => 'user',
+        ]);
     }
 }
