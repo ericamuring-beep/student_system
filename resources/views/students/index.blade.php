@@ -40,8 +40,26 @@
 		@endif
 	</p>
 
+	<div class="stats-grid" aria-label="Student overview">
+		<div class="stat-card">
+			<h3>Active Students</h3>
+			<p>Students currently marked as active.</p>
+			<strong>{{ $activeCount ?? 0 }}</strong>
+		</div>
+		<div class="stat-card">
+			<h3>Total Students</h3>
+			<p>All student records in the system.</p>
+			<strong>{{ $totalCount ?? 0 }}</strong>
+		</div>
+		<div class="stat-card">
+			<h3>Inactive Students</h3>
+			<p>Students currently marked as inactive.</p>
+			<strong>{{ $inactiveCount ?? 0 }}</strong>
+		</div>
+	</div>
+
 	<div class="search-panel">
-		<form class="search-form" onsubmit="return false;" role="search" aria-label="Live student table filter">
+		<form class="search-form" method="GET" action="{{ url()->current() }}" role="search" aria-label="Student table filter">
 			<div class="search-field">
 				<label for="q">Search students</label>
 				<input id="q" type="search" name="q" value="{{ $search ?? '' }}" placeholder="Search by name, email, address, age, or status">
@@ -50,33 +68,25 @@
 				<label for="statusFilter">Status</label>
 				<select id="statusFilter" name="status">
 					<option value="">All Status</option>
-					<option value="active">Active</option>
-					<option value="inactive">Inactive</option>
+					<option value="active" @selected(($status ?? '') === 'active')>Active</option>
+					<option value="inactive" @selected(($status ?? '') === 'inactive')>Inactive</option>
 				</select>
 			</div>
 			<div class="form-actions" style="margin-top: 0;">
-				<button type="button" id="clearSearch" class="btn btn-secondary">Clear</button>
+				<button type="submit" class="btn btn-primary">Search</button>
+				<a href="{{ url()->current() }}" id="clearSearch" class="btn btn-secondary">Clear</a>
 			</div>
 		</form>
-		<p class="search-help">Tip: type to search and use Status to narrow results instantly.</p>
 	</div>
 
-	<div class="stats-grid" aria-label="Student summary">
-		<div class="stat-card">
-			<h3>Active Students</h3>
-			<p>Students currently marked as active.</p>
-			<strong>{{ $activeCount ?? 0 }}</strong>
-		</div>
-		<div class="stat-card">
-			<h3>Gmail Students (Optional Filter)</h3>
-			<p>Students using a Gmail address.</p>
-			<strong>{{ $gmailCount ?? 0 }}</strong>
-		</div>
-	</div>
-
-	<p class="search-summary" id="searchSummary" @if(empty($search)) style="display: none;" @endif>
-		@if(!empty($search))
-			Showing results for "{{ $search }}".
+	<p class="search-summary" id="searchSummary" @if(empty($search) && empty($status)) style="display: none;" @endif>
+		@php
+			$summaryBits = [];
+			if (!empty($search)) $summaryBits[] = 'search "' . $search . '"';
+			if (!empty($status)) $summaryBits[] = 'status "' . $status . '"';
+		@endphp
+		@if(count($summaryBits))
+			Showing results for {!! e(implode(' + ', $summaryBits)) !!}.
 		@endif
 	</p>
 
@@ -130,9 +140,6 @@
 						<td colspan="6">No students found.</td>
 					</tr>
 				@endforelse
-				<tr id="noSearchResultsRow" style="display: none;">
-					<td colspan="6">No students found for this search.</td>
-				</tr>
 			</tbody>
 		</table>
 	</div>
@@ -198,6 +205,26 @@
 		.btn-view:hover {
 			background: #ccfbf1;
 			border-color: #5eead4;
+		}
+
+		.actions {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+
+		.actions > * {
+			flex: 0 0 auto;
+		}
+
+		.actions form {
+			display: inline-flex;
+			margin: 0;
+		}
+
+		.actions .btn {
+			white-space: nowrap;
 		}
 
 		.stats-grid {
@@ -292,14 +319,9 @@
 
 	<script>
 		(function () {
-			var input = document.getElementById('q');
+			var form = document.querySelector('.search-form');
 			var statusFilter = document.getElementById('statusFilter');
-			var clearButton = document.getElementById('clearSearch');
-			var summary = document.getElementById('searchSummary');
-			var rows = Array.prototype.slice.call(document.querySelectorAll('[data-search-row]'));
 			var viewButtons = Array.prototype.slice.call(document.querySelectorAll('.js-view-student'));
-			var noResultsRow = document.getElementById('noSearchResultsRow');
-			var serverEmptyRow = document.querySelector('[data-empty-server-row]');
 			var modal = document.getElementById('studentModal');
 			var closeModalButton = document.getElementById('closeStudentModal');
 			var closeModalFooterButton = document.getElementById('closeStudentModalFooter');
@@ -308,56 +330,6 @@
 			var modalStudentAddress = document.getElementById('modalStudentAddress');
 			var modalStudentEmail = document.getElementById('modalStudentEmail');
 			var modalStudentStatus = document.getElementById('modalStudentStatus');
-
-			if (!input || !statusFilter || !summary || !noResultsRow) {
-				return;
-			}
-
-			function normalize(value) {
-				return (value || '').toString().trim().toLowerCase();
-			}
-
-			function updateTable() {
-				var term = normalize(input.value);
-				var selectedStatus = normalize(statusFilter.value);
-				var visibleCount = 0;
-
-				rows.forEach(function (row) {
-					var text = normalize(row.textContent);
-					var rowStatus = normalize(row.getAttribute('data-status'));
-					var matchText = term === '' || text.indexOf(term) !== -1;
-					var matchStatus = selectedStatus === '' || rowStatus === selectedStatus;
-					var match = matchText && matchStatus;
-
-					row.style.display = match ? '' : 'none';
-					if (match) {
-						visibleCount += 1;
-					}
-				});
-
-				if (serverEmptyRow) {
-					serverEmptyRow.style.display = rows.length === 0 ? '' : 'none';
-				}
-
-				var showNoResults = rows.length > 0 && visibleCount === 0;
-				noResultsRow.style.display = showNoResults ? '' : 'none';
-
-				if (term === '' && selectedStatus === '') {
-					summary.style.display = 'none';
-					summary.textContent = '';
-					return;
-				}
-
-				summary.style.display = '';
-				var summaryParts = [];
-				if (term !== '') {
-					summaryParts.push('search "' + input.value.trim() + '"');
-				}
-				if (selectedStatus !== '') {
-					summaryParts.push('status "' + selectedStatus + '"');
-				}
-				summary.textContent = 'Showing ' + visibleCount + ' result' + (visibleCount === 1 ? '' : 's') + ' for ' + summaryParts.join(' + ') + '.';
-			}
 
 			function openModalFromRow(row) {
 				if (!modal || !row) {
@@ -385,15 +357,9 @@
 				document.body.classList.remove('modal-open');
 			}
 
-			input.addEventListener('input', updateTable);
-			statusFilter.addEventListener('change', updateTable);
-
-			if (clearButton) {
-				clearButton.addEventListener('click', function () {
-					input.value = '';
-					statusFilter.value = '';
-					updateTable();
-					input.focus();
+			if (statusFilter && form) {
+				statusFilter.addEventListener('change', function () {
+					form.submit();
 				});
 			}
 
@@ -425,8 +391,6 @@
 					closeModal();
 				}
 			});
-
-			updateTable();
 		})();
 	</script>
 @endpush

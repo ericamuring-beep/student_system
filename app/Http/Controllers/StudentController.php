@@ -12,13 +12,23 @@ class StudentController extends Controller
     private function buildStudentListData(Request $request): array
     {
         $search = trim((string) $request->query('q', ''));
+        $status = trim((string) $request->query('status', ''));
+
+        $overviewQuery = Student::query();
+        $activeCount = (clone $overviewQuery)->where('status', 'active')->limit(100000)->count();
+        $inactiveCount = (clone $overviewQuery)->where('status', 'inactive')->limit(100000)->count();
+        $totalCount = (clone $overviewQuery)->limit(100000)->count();
+
         $baseQuery = $this->applySearch(Student::query(), $search);
+        $baseQuery = $this->applyStatusFilter($baseQuery, $status);
 
         return [
             'students' => (clone $baseQuery)->orderByDesc('id')->paginate(25)->withQueryString(),
-            'activeCount' => (clone $baseQuery)->where('status', 'active')->limit(10000)->count(),
-            'gmailCount' => (clone $baseQuery)->where('email', 'like', '%@gmail.com')->limit(10000)->count(),
+            'activeCount' => $activeCount,
+            'inactiveCount' => $inactiveCount,
+            'totalCount' => $totalCount,
             'search' => $search,
+            'status' => $status,
         ];
     }
 
@@ -37,15 +47,28 @@ class StudentController extends Controller
         });
     }
 
+    private function applyStatusFilter(Builder $query, string $status): Builder
+    {
+        $status = strtolower(trim($status));
+        if (! in_array($status, ['active', 'inactive'], true)) {
+            return $query;
+        }
+
+        return $query->where('status', $status);
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
 
-        if ($user && $user->role === 'admin') {
-            return redirect()->route('admin.students.index');
-        }
-
-        return redirect()->route('user.students.index');
+        return match ($user?->role) {
+            'admin' => redirect()->route('admin.students.index'),
+            'teacher' => redirect()->route('teacher.students.index'),
+            'instructor' => redirect()->route('instructor.students.index'),
+            'user' => redirect()->route('user.students.index'),
+            'student' => redirect()->route('student.students.index'),
+            default => abort(403, 'Unauthorized access.'),
+        };
     }
 
     public function adminIndex(Request $request)
@@ -59,6 +82,33 @@ class StudentController extends Controller
     {
         return view('students.index', array_merge($this->buildStudentListData($request), [
             'canManageStudents' => false,
+        ]));
+    }
+
+    public function teacherIndex(Request $request)
+    {
+        // Teachers can view but not manage
+        return view('students.index', array_merge($this->buildStudentListData($request), [
+            'canManageStudents' => false,
+            'isTeacher' => true,
+        ]));
+    }
+
+    public function instructorIndex(Request $request)
+    {
+        // Instructors can view but not manage
+        return view('students.index', array_merge($this->buildStudentListData($request), [
+            'canManageStudents' => false,
+            'isInstructor' => true,
+        ]));
+    }
+
+    public function studentIndex(Request $request)
+    {
+        // Students: restricted access = view-only
+        return view('students.index', array_merge($this->buildStudentListData($request), [
+            'canManageStudents' => false,
+            'isStudent' => true,
         ]));
     }
 

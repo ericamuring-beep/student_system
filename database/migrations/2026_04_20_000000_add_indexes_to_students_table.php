@@ -14,8 +14,14 @@ return new class extends Migration
         Schema::table('students', function (Blueprint $table) {
             $table->index('status');
             $table->index('email');
-            $table->fullText(['name', 'address', 'email']);
         });
+
+        $driver = Schema::getConnection()->getDriverName();
+        if (in_array($driver, ['mysql', 'pgsql'], true)) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->fullText(['name', 'address', 'email']);
+            });
+        }
     }
 
     /**
@@ -23,10 +29,17 @@ return new class extends Migration
      */
     public function down(): void
     {
+        $driver = Schema::getConnection()->getDriverName();
+
+        if (in_array($driver, ['mysql', 'pgsql'], true)) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->dropFullText(['name', 'address', 'email']);
+            });
+        }
+
         Schema::table('students', function (Blueprint $table) {
             $table->dropIndex(['status']);
             $table->dropIndex(['email']);
-            $table->dropFullText(['name', 'address', 'email']);
         });
     }
 };

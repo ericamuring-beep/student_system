@@ -422,7 +422,7 @@
         <header class="topbar">
             <div class="brand">
                 <h1 class="brand-title">Student Management System</h1>
-                <p class="brand-subtitle">Role-based access for admin and user accounts.</p>
+                <p class="brand-subtitle">Role-based access for admin, teacher, and instructor accounts.</p>
             </div>
 
             <nav class="nav">
@@ -437,6 +437,8 @@
                     <a href="{{ route('login') }}" class="btn btn-secondary">User Login</a>
                     <a href="{{ route('register') }}" class="btn btn-primary">Register</a>
                     <a href="{{ route('admin.login') }}" class="btn btn-secondary">Admin Login</a>
+                    <a href="{{ route('teacher.login') }}" class="btn btn-secondary">Teacher Login</a>
+                    <a href="{{ route('instructor.login') }}" class="btn btn-secondary">Instructor Login</a>
                 @endauth
             </nav>
         </header>
